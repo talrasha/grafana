@@ -64,6 +64,9 @@ func TestAlertProvider(t *testing.T) {
 
 	require.NoError(t, ap.PutPostableAlert(postableAlerts))
 
+	// We take the "now" time from one of the UpdatedAt.
+	now := alertProvider.alerts[0].UpdatedAt
+
 	// Alerts that should be sent for routing.
 	expProviderAlerts := []*types.Alert{
 		{
@@ -74,26 +77,36 @@ func TestAlertProvider(t *testing.T) {
 				EndsAt:       endTime,
 				GeneratorURL: "http://localhost/url1",
 			},
+			UpdatedAt: now,
 		}, {
 			Alert: model.Alert{
 				Annotations:  model.LabelSet{"msg": "Alert2 annotation"},
 				Labels:       model.LabelSet{"alertname": "Alert2"},
+				StartsAt:     endTime,
 				EndsAt:       endTime,
 				GeneratorURL: "http://localhost/url2",
 			},
+			UpdatedAt: now,
 		}, {
 			Alert: model.Alert{
 				Annotations:  model.LabelSet{"msg": "Alert3 annotation"},
 				Labels:       model.LabelSet{"alertname": "Alert3"},
 				StartsAt:     startTime,
+				EndsAt:       now.Add(DefaultResolveTimeout),
 				GeneratorURL: "http://localhost/url3",
 			},
+			UpdatedAt: now,
+			Timeout:   true,
 		}, {
 			Alert: model.Alert{
 				Annotations:  model.LabelSet{"msg": "Alert4 annotation"},
 				Labels:       model.LabelSet{"alertname": "Alert4"},
+				StartsAt:     now,
+				EndsAt:       now.Add(DefaultResolveTimeout),
 				GeneratorURL: "http://localhost/url4",
 			},
+			UpdatedAt: now,
+			Timeout:   true,
 		},
 	}
 	require.Equal(t, expProviderAlerts, alertProvider.alerts)

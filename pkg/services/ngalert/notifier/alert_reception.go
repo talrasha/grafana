@@ -13,6 +13,11 @@ import (
 	"github.com/prometheus/common/model"
 )
 
+// DefaultResolveTimeout is the default timeout use for resolving the alert
+// if the end time for alert is not specified.
+// TODO: should this be configurable?
+const DefaultResolveTimeout = 30 * time.Minute
+
 type AlertProvider struct {
 	provider.Alerts
 }
@@ -29,14 +34,15 @@ func NewAlertProvider(m types.Marker) (*AlertProvider, error) {
 }
 
 func (ap *AlertProvider) PutPostableAlert(postableAlerts apimodels.PostableAlerts) error {
+	now := time.Now()
 	alerts := make([]*types.Alert, 0, len(postableAlerts.PostableAlerts))
 	for _, a := range postableAlerts.PostableAlerts {
-		alerts = append(alerts, alertForDelivery(a))
+		alerts = append(alerts, alertForDelivery(a, now))
 	}
 	return ap.Alerts.Put(alerts...)
 }
 
-func alertForDelivery(a models.PostableAlert) *types.Alert {
+func alertForDelivery(a models.PostableAlert, now time.Time) *types.Alert {
 	lbls := model.LabelSet{}
 	annotations := model.LabelSet{}
 	for k, v := range a.Labels {
@@ -46,7 +52,7 @@ func alertForDelivery(a models.PostableAlert) *types.Alert {
 		annotations[model.LabelName(k)] = model.LabelValue(v)
 	}
 
-	return &types.Alert{
+	alert := &types.Alert{
 		Alert: model.Alert{
 			Labels:       lbls,
 			Annotations:  annotations,
@@ -54,7 +60,23 @@ func alertForDelivery(a models.PostableAlert) *types.Alert {
 			EndsAt:       time.Time(a.EndsAt),
 			GeneratorURL: a.GeneratorURL.String(),
 		},
-		UpdatedAt: time.Time{}, // TODO(codesome) what should this be?
-		Timeout:   false,       // TODO(codesome).
+		UpdatedAt: now,
 	}
+
+	// Ensure StartsAt is set.
+	if alert.StartsAt.IsZero() {
+		if alert.EndsAt.IsZero() {
+			alert.StartsAt = now
+		} else {
+			alert.StartsAt = alert.EndsAt
+		}
+	}
+	// If no end time is defined, set a timeout after which an alert
+	// is marked resolved if it is not updated.
+	if alert.EndsAt.IsZero() {
+		alert.Timeout = true
+		alert.EndsAt = now.Add(DefaultResolveTimeout)
+	}
+
+	return alert
 }
