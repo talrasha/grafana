@@ -7,5 +7,15 @@ if ((window as any).public_cdn_path) {
   __webpack_public_path__ = (window as any).public_cdn_path;
 }
 
-import app from './app';
-app.init();
+import 'symbol-observable';
+import 'core-js';
+import 'regenerator-runtime/runtime';
+
+import 'whatwg-fetch'; // fetch polyfill needed for PhantomJs rendering
+
+import _ from 'lodash';
+import ReactDOM from 'react-dom';
+import React from 'react';
+import AppWrapper from './AppWrapper';
+
+ReactDOM.render(React.createElement(AppWrapper), document.getElementById('reactRoot'));

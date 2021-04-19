@@ -1,3 +1,4 @@
+import { BeforeMount } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 
 export type CodeEditorChangeHandler = (value: string) => void;
@@ -20,6 +21,8 @@ export interface CodeEditorProps {
    * @alpha -- experimental - real type is: monaco.editor.IStandaloneCodeEditor
    */
   onEditorDidMount?: (editor: any) => void;
+
+  onEditorWillMount?: BeforeMount;
 
   /** Handler to be performed when editor is blurred */
   onBlur?: CodeEditorChangeHandler;
